@@ -100,3 +100,14 @@ variable "sync_method" {
     error_message = "Allowed values: `groups`, `users_groups`"
   }
 }
+
+variable "lambda_runtime" {
+  type        = string
+  description = "Lambda runtime"
+  default     = "provided.al2023"
+
+  validation {
+    condition     = contains(["provided.al2", "provided.al2023"], var.lambda_runtime)
+    error_message = "Allowed values: `provided.al2`, `provided.al2023`"
+  }
+}
