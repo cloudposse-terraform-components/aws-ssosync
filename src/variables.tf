@@ -103,7 +103,7 @@ variable "sync_method" {
 
 variable "lambda_runtime" {
   type        = string
-  description = "Lambda runtime"
+  description = "Lambda runtime (allowed: `provided.al2`, `provided.al2023`)"
   default     = "provided.al2023"
 
   validation {
