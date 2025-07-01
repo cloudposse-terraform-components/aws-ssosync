@@ -1,6 +1,7 @@
 locals {
   enabled                    = module.this.enabled
   google_credentials         = one(data.aws_ssm_parameter.google_credentials[*].value)
+  google_creds_json          = one(data.aws_ssm_parameter.google_creds_json[*].value)
   scim_endpoint_url          = one(data.aws_ssm_parameter.scim_endpoint_url[*].value)
   scim_endpoint_access_token = one(data.aws_ssm_parameter.scim_endpoint_access_token[*].value)
   identity_store_id          = one(data.aws_ssm_parameter.identity_store_id[*].value)
@@ -13,6 +14,11 @@ locals {
 data "aws_ssm_parameter" "google_credentials" {
   count = local.enabled ? 1 : 0
   name  = "${var.google_credentials_ssm_path}/google_credentials"
+}
+
+data "aws_ssm_parameter" "google_creds_json" {
+  count = local.enabled ? 1 : 0
+  name  = "${var.google_credentials_ssm_path}/google_creds_json"
 }
 
 data "aws_ssm_parameter" "scim_endpoint_url" {
@@ -47,7 +53,7 @@ resource "null_resource" "extract_my_tgz" {
   count = local.enabled ? 1 : 0
 
   provisioner "local-exec" {
-    command = "tar -xzf ${local.download_artifact} -C dist"
+    command = "tar -xzf ${local.download_artifact} -C dist && chmod +x dist/ssosync"
   }
 
   depends_on = [module.ssosync_artifact]
@@ -57,7 +63,7 @@ data "archive_file" "lambda" {
   count = local.enabled ? 1 : 0
 
   type        = "zip"
-  source_file = "dist/ssosync"
+  source_dir = "dist"
   output_path = "ssosync.zip"
 
   depends_on = [null_resource.extract_my_tgz]
@@ -72,8 +78,8 @@ resource "aws_lambda_function" "ssosync" {
   source_code_hash = module.ssosync_artifact[0].base64sha256
   description      = "Syncs Google Workspace users and groups to AWS SSO"
   role             = aws_iam_role.default[0].arn
-  handler          = "ssosync"
-  runtime          = "go1.x"
+  handler          = "bootstrap.lambda_handler"
+  runtime          = "python3.12"
   timeout          = 300
   memory_size      = 128
 
@@ -82,6 +88,7 @@ resource "aws_lambda_function" "ssosync" {
       SSOSYNC_LOG_LEVEL          = var.log_level
       SSOSYNC_LOG_FORMAT         = var.log_format
       SSOSYNC_GOOGLE_CREDENTIALS = local.google_credentials
+      SSOSYNC_GOOGLE_CREDS_JSON  = local.google_creds_json
       SSOSYNC_GOOGLE_ADMIN       = var.google_admin_email
       SSOSYNC_SCIM_ENDPOINT      = local.scim_endpoint_url
       SSOSYNC_SCIM_ACCESS_TOKEN  = local.scim_endpoint_access_token
@@ -96,7 +103,7 @@ resource "aws_lambda_function" "ssosync" {
       SSOSYNC_LOAD_ASM_SECRETS   = false
     }
   }
-  depends_on = [null_resource.extract_my_tgz, data.archive_file.lambda]
+  depends_on = [data.archive_file.lambda]
 }
 
 resource "aws_cloudwatch_event_rule" "ssosync" {
