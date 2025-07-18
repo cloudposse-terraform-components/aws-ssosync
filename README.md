@@ -92,9 +92,9 @@ These can be found by clicking `Enable Automatic provisioning` in the AWS IAM Id
 
 ```
 # Typically looks like `https://scim.us-east-2.amazonaws.com/.../scim/v2`
-/ssosync/scim_endpoint_access_token
-# Typically looks like a base64 encoded value
 /ssosync/scim_endpoint_url
+# Typically looks like a base64 encoded value
+/ssosync/scim_endpoint_access_token
 ```
 
 Select `Settings`, under the `Identity Source` section, copy the `Identity Store ID` and create the following parameter:
