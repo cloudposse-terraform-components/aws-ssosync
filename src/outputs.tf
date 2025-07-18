@@ -12,3 +12,8 @@ output "qualified_arn" {
   description = "ARN identifying your Lambda Function Version (if versioning is enabled via publish = true)"
   value       = one(aws_lambda_function.ssosync[*].qualified_arn)
 }
+
+output "ssosync_artifact_url" {
+  value       = local.ssosync_artifact_url
+  description = "URL of the ssosync artifact"
+}
