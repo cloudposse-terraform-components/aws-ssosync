@@ -75,7 +75,7 @@ resource "null_resource" "extract_my_tgz" {
   count = local.enabled ? 1 : 0
 
   provisioner "local-exec" {
-    command = "tar -xzf ${local.download_artifact} -C dist && chmod +x dist/ssosync"
+    command = "tar -xzf ${local.download_artifact} -C dist"
   }
   triggers = {
     file_content = join(",", local.file_content_map)
