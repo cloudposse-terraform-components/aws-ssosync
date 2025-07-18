@@ -12,7 +12,7 @@ locals {
   scim_endpoint_access_token = one(data.aws_ssm_parameter.scim_endpoint_access_token[*].value)
   identity_store_id          = one(data.aws_ssm_parameter.identity_store_id[*].value)
 
-  ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/ssosync_Linux_${var.architecture}.tar.gz"
+  ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/Lambda_ssosync_Linux_${var.architecture}.tar.gz"
   download_artifact    = "ssosync.tar.gz"
 
   lambda_files     = fileset("${path.module}/dist", "*")
@@ -75,7 +75,7 @@ resource "null_resource" "extract_my_tgz" {
   count = local.enabled ? 1 : 0
 
   provisioner "local-exec" {
-    command = "tar -xzf ${local.download_artifact} -C dist && chmod +x dist/ssosync && mv dist/ssosync dist/bootstrap"
+    command = "tar -xzf ${local.download_artifact} -C dist && chmod +x dist/ssosync"
   }
   triggers = {
     file_content = join(",", local.file_content_map)
