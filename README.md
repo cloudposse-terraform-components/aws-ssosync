@@ -207,8 +207,9 @@ Ref:
 
 https://github.com/awslabs/ssosync/issues/91
 
-<!-- prettier-ignore-start -->
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- prettier-ignore-start -->
+<!-- prettier-ignore-end -->
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 
