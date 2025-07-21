@@ -60,7 +60,6 @@ module "ssosync_artifact" {
 
   context = module.this.context
 
-  depends_on = [random_pet.zip_recreator]
 }
 
 // This resource is in charge of "notifying" when the dist folder has changed

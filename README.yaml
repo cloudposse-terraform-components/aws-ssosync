@@ -14,8 +14,7 @@ description: |-
 
   ## Usage
 
-  You should be able to deploy the `aws-ssosync` component to the same account as `aws-sso`. Typically that is the
-  `core-gbl-root` or `gbl-root` stack.
+  You should be able to deploy the `ssosync` component to the same account as `aws-sso`. Typically that is the `core-gbl-root` or `gbl-root` stack.
 
   **Stack Level**: Global **Deployment**: Must be deployed by `managers` team-member or SuperAdmin using `atmos` CLI (since this is a root account deployment). This could also be deployed in an identity management account.
 
