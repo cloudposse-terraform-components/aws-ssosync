@@ -34,13 +34,13 @@ variable "log_format" {
 variable "ssosync_url_prefix" {
   type        = string
   description = "URL prefix for ssosync binary"
-  default     = "https://github.com/Benbentwo/ssosync/releases/download"
+  default     = "https://github.com/cloudposse/ssosync/releases/download"
 }
 
 variable "ssosync_version" {
   type        = string
   description = "Version of ssosync to use"
-  default     = "v2.0.2"
+  default     = "v3.0.0"
 }
 
 variable "architecture" {
@@ -61,15 +61,15 @@ variable "google_admin_email" {
 }
 
 variable "google_user_match" {
-  type        = string
+  type        = list(string)
   description = "Google Workspace user filter query parameter, example: 'name:John* email:admin*', see: https://developers.google.com/admin-sdk/directory/v1/guides/search-users"
-  default     = ""
+  default     = []
 }
 
 variable "google_group_match" {
-  type        = string
+  type        = list(string)
   description = "Google Workspace group filter query parameter, example: 'name:Admin* email:aws-*', see: https://developers.google.com/admin-sdk/directory/v1/guides/search-groups"
-  default     = ""
+  default     = []
 }
 
 variable "ignore_groups" {
