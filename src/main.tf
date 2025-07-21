@@ -45,6 +45,7 @@ data "aws_ssm_parameter" "identity_store_id" {
 }
 
 
+// This module is the resource that actually downloads the artifact from GitHub as a tar.gz
 module "ssosync_artifact" {
   count = local.enabled ? 1 : 0
 
@@ -62,6 +63,8 @@ module "ssosync_artifact" {
   depends_on = [random_pet.zip_recreator]
 }
 
+// This resource is in charge of "notifying" when the dist folder has changed
+// by updating the `keepers` value.
 resource "random_pet" "zip_recreator" {
   count = local.enabled ? 1 : 0
 
@@ -71,6 +74,8 @@ resource "random_pet" "zip_recreator" {
   }
 }
 
+// Here we extract the downloaded tar.gz artifact
+// into the `dist` directory, populating it.
 resource "null_resource" "extract_my_tgz" {
   count = local.enabled ? 1 : 0
 
@@ -85,6 +90,7 @@ resource "null_resource" "extract_my_tgz" {
   depends_on = [module.ssosync_artifact[0]]
 }
 
+// Here we create a zip artifact from the `dist` directory, this is the artifact that will be deployed to AWS Lambda.
 resource "archive_file" "lambda" {
   count = local.enabled ? 1 : 0
 
