@@ -82,6 +82,7 @@ resource "null_resource" "extract_my_tgz" {
   provisioner "local-exec" {
     command = "tar -xzf ${local.download_artifact} -C dist"
   }
+  // We want to re-extract the tar.gz when the tar.gz changes or the dist folder changes
   triggers = {
     file_content = join(",", local.file_content_map)
     tar_sha256   = join(",", local.tar_file_content)
@@ -98,6 +99,7 @@ resource "archive_file" "lambda" {
   source_dir  = "dist"
   output_path = "ssosync.zip"
 
+  // this will recreate the zip to publish to lambda when anything in the dist folder changes
   lifecycle {
     replace_triggered_by = [random_pet.zip_recreator]
   }
@@ -114,7 +116,7 @@ resource "aws_lambda_function" "ssosync" {
   source_code_hash = module.ssosync_artifact[0].base64sha256
   description      = "Syncs Google Workspace users and groups to AWS SSO"
   role             = aws_iam_role.default[0].arn
-  # While yes, we ultimately have a go binary we are executing. Downloading the Tar, extracting, 
+  # While yes, we ultimately have a go binary we are executing. Downloading the Tar, extracting,
   # and moving the binary to be called "bootstrap" is not a fun thing to execute in Terraform with state.
   handler     = "bootstrap"
   runtime     = "provided.al2023"
