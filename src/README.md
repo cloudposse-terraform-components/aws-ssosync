@@ -1,123 +1,194 @@
-# ssosync 🌐
-
-**Sync Google Workspace users and groups to AWS IAM Identity Center (SSO) via CLI or Lambda, now fully configurable via environment variables.**
-
-This is intended to be used with CloudPosse's [aws-ssosync](https://github.com/cloudposse-terraform-components/aws-ssosync) component.
-
+---
+tags:
+  - component/aws-ssosync
+  - layer/identity
+  - provider/aws
 ---
 
-## 🚀 Features
+# Component: `ssosync`
 
-- Fetches users and groups from Google Workspace using Admin SDK.
-- Provisions, updates, and removes identities in AWS Identity Center using SCIM API.
-- Configurable entirely via environment variables—ideal for Terraform, Kubernetes, or AWS Lambda.
+# Component: `ssosync`
 
----
+Deploys [AWS ssosync](https://github.com/awslabs/ssosync) to sync Google Groups with AWS SSO.
 
-## 🔧 Why This Fork?
+AWS `ssosync` is a Lambda application that regularly manages Identity Store users.
 
-The original `ssosync` required AWS Secrets Manager for sensitive parameters like SCIM tokens. Our fork removes that limitation. Now you can:
+This component requires manual deployment by a privileged user because it deploys a role in the root or identity
+management account.
+## Usage
 
-- Use any secret source supported by your Terraform provider.
-- Inject values via environment variables: no more hardcoding or AWS Secrets dependency.
-- Maintain portability across deployment platforms.
+## Usage
 
----
+You should be able to deploy the `ssosync` component to the same account as `aws-sso`. Typically that is the `core-gbl-root` or `gbl-root` stack.
 
-## 📌 Configuration
+**Stack Level**: Global **Deployment**: Must be deployed by `managers` team-member or SuperAdmin using `atmos` CLI (since this is a root account deployment). This could also be deployed in an identity management account.
 
-All settings are configurable via env vars (or CLI flags):
+The following is an example snippet for how to use this component:
 
-| Env Variable                                                                                     | Description                         |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `GOOGLE_CREDENTIALS`                                                                             | Path to Google service‑account JSON |
-| `GOOGLE_ADMIN`                                                                                   | Workspace admin email               |
-| `SCIM_ENDPOINT`                                                                                  | AWS SSO SCIM endpoint URL           |
-| `SCIM_ACCESS_TOKEN`                                                                              | AWS SSO SCIM access token           |
-| Optional filters: `USER_MATCH`, `GROUP_MATCH`, `IGNORE_USERS`, `IGNORE_GROUPS`, `INCLUDE_GROUPS` |                                     |
-| Sync mode: `SYNC_METHOD` (`groups` or `users_groups`)                                            |                                     |
-| Logging options: `LOG_LEVEL`, `LOG_FORMAT`                                                       |                                     |
+(`stacks/catalog/aws-ssosync.yaml`)
 
-These map exactly to the fork’s CLI flags, e.g.:
-
-```bash
-export GOOGLE_CREDENTIALS="/secrets/google-creds.json"
-export GOOGLE_ADMIN="admin@example.com"
-export SCIM_ENDPOINT="https://portal.sso.us-west-2.amazonaws.com/scim/v2"
-export SCIM_ACCESS_TOKEN="xxxx"
-export SYNC_METHOD="groups"
-export GROUP_MATCH="name:Dev*"
+```yaml
+components:
+  terraform:
+    ssosync:
+      vars:
+        enabled: true
+        name: ssosync
+        google_admin_email: admin@acme.com
+        log_format: text
+        log_level: warn
+        schedule_expression: "rate(15 minutes)"
+        # Filter the groups that will be synced and is optional (default: all groups)
+        # This supports wild cards `*`
+        google_group_match:
+          - "email='developer@acme.com'"
+          - "email='aws@acme.com'"
+          - "name='Acme Team'"
 ```
 
----
+We recommend following a similar process to what the [AWS ssosync](https://github.com/awslabs/ssosync) documentation
+recommends.
 
-## ⚙️ Installation
+### Deployment
 
-1. Clone this repo:
+Overview of steps:
 
-   ```bash
-   git clone https://github.com/Benbentwo/ssosync.git
-   cd ssosync
-   ```
+1. Configure AWS IAM Identity Center
+1. Configure Google Cloud console
+1. Configure Google Admin console
+1. Deploy the `aws-ssosync` component
+1. Deploy the `aws-sso` component
 
-2. Build the Go binary:
+#### 1. Configure AWS IAM Identity Center (AWS SSO)
 
-   ```bash
-   make go-build
-   ```
+Follow
+[AWS documentation to configure SAML and SCIM with Google Workspace and IAM Identity Center](https://docs.aws.amazon.com/singlesignon/latest/userguide/gs-gwp.html).
+Do steps 1-4. **Step 5: Google Workspace: Configure auto provisioning is impossible.**
 
-3. Or deploy the `./ssosync` binary directly in your environment or Lambda.
+As part of this process, save the SCIM endpoint token and URL. Then in AWS SSM Parameter Store, create two
+`SecureString` parameters in the same account used for AWS SSO. This is usually the root account in the primary region.
 
----
+These can be found by clicking `Enable Automatic provisioning` in the AWS IAM Identity Center console.
 
-## 💻 Local Usage
-
-```bash
-./ssosync \
-  --google-credentials "$GOOGLE_CREDENTIALS" \
-  --google-admin "$GOOGLE_ADMIN" \
-  --endpoint "$SCIM_ENDPOINT" \
-  --access-token "$SCIM_ACCESS_TOKEN" \
-  --sync-method "$SYNC_METHOD" \
-  --group-match "$GROUP_MATCH" \
-  --log-level info
+```
+# Typically looks like `https://scim.us-east-2.amazonaws.com/.../scim/v2`
+/ssosync/scim_endpoint_url
+# Typically looks like a base64 encoded value
+/ssosync/scim_endpoint_access_token
 ```
 
-Environment variables automatically provide defaults for flags.
+Select `Settings`, under the `Identity Source` section, copy the `Identity Store ID` and create the following parameter:
 
----
+```
+# Typically looks like `d-000000aaaa`
+/ssosync/identity_store_id
+```
 
-## ☁️ AWS Lambda Deployment
+#### 2. Configure Google Cloud console
 
-Package the binary and deploy using your preferred IaC:
+Within the [Google Cloud console](https://console.cloud.google.com), we need to create a new Google Project and Service Account and enable the Admin SDK
+API. Follow these steps:
 
-- **ZIP or containerize** `ssosync`.
-- Set the above env vars in Lambda configuration (via Terraform, CloudFormation, or console).
-- Schedule the function on a CRON trigger via EventBridge (CloudWatch Events) for periodic syncing.
+2. Create a new project. Give the project a descriptive name such as `AWS SSO Sync`
+3. Enable Admin SDK in APIs: `APIs & Services > Enabled APIs & Services > + ENABLE APIS AND SERVICES`
 
----
+![Enable Admin SDK](https://raw.githubusercontent.com/cloudposse-terraform-components/aws-ssosync/main/src/docs/img/admin_sdk.png)
 
-## 📚 References
+4. Create Service Account: `IAM & Admin > Service Accounts > Create Service Account`
+  [(ref)](https://cloud.google.com/iam/docs/service-accounts-create).
 
-This fork is built on top of the original `awslabs/ssosync` project ([github.com][1], [github.com][2], [github.com][3])—all major capabilities remain intact, with the improved configuration layer front and center.
+![Create Service Account](https://raw.githubusercontent.com/cloudposse-terraform-components/aws-ssosync/main/src/docs/img/create_service_account.png)
 
----
+5. Download credentials for the new Service Account:
+  `IAM & Admin > Service Accounts > select Service Account > Keys > ADD KEY > Create new key > JSON`
 
-## 🛠️ Contributing
+![Download Credentials](https://raw.githubusercontent.com/cloudposse-terraform-components/aws-ssosync/main/src/docs/img/dl_service_account_creds.png)
+6. Save the JSON credentials as a new `SecureString` AWS SSM parameter in the same account used for AWS SSO. Use the
+  full JSON string as the value for the parameter.
 
-Please file issues or PRs if you encounter bugs or want new features. We welcome help with:
+```
+/ssosync/google_credentials
+```
 
-- More flexible secret backends (e.g., Kubernetes Secrets, HashiCorp Vault).
-- Enhanced filtering options.
-- Improved test coverage.
+#### 3. Configure Google Admin console
 
----
+- Open the [Google Admin console](https://admin.google.com/)
+- From your domain’s Admin console, go to `Main menu menu > Security > Access and data control > API controls`
+- In the Domain wide delegation pane, select `Manage Domain Wide Delegation`.
+- Click `Add new`.
+- In the Client ID field, enter the `Unique ID` of the Service Account created in step 2, this should be a 22 number string.
+- In the OAuth Scopes field, enter
 
-## ⚖️ License
+```console
+https://www.googleapis.com/auth/admin.directory.group.readonly,https://www.googleapis.com/auth/admin.directory.group.member.readonly,https://www.googleapis.com/auth/admin.directory.user.readonly
+```
 
-Apache 2.0. See [LICENSE](LICENSE).
+#### 4. Deploy the `aws-ssosync` component
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+Make sure that all four of the following SSM parameters exist in the target account and region:
+
+- `/ssosync/scim_endpoint_url`
+- `/ssosync/scim_endpoint_access_token`
+- `/ssosync/identity_store_id`
+- `/ssosync/google_credentials`
+
+If deployed successfully, Groups and Users should be programmatically copied from the Google Workspace into AWS IAM
+Identity Center on the given schedule.
+
+If these Groups are not showing up, check the CloudWatch logs for the new Lambda function and refer the [FAQs](#FAQ)
+included below.
+
+#### 5. Deploy the `aws-sso` component
+
+Use the names of the Groups now provisioned programmatically in the `aws-sso` component catalog. Follow the
+[aws-sso](../aws-sso/) component documentation to deploy the `aws-sso` component.
+
+### FAQ
+
+#### Why is the tool forked by `Benbentwo`?
+
+The `awslabs` tool requires AWS Secrets Managers for the Google Credentials. However, we would prefer to use AWS SSM to
+store all credentials consistency and not require AWS Secrets Manager. Therefore we've created a Pull Request and will
+point to a fork until the PR is merged.
+
+Ref:
+
+- https://github.com/awslabs/ssosync/pull/133
+- https://github.com/awslabs/ssosync/issues/93
+
+#### What should I use for the Google Admin Email Address?
+
+The Service Account created will assume the User given by `--google-admin` / `SSOSYNC_GOOGLE_ADMIN` /
+`var.google_admin_email`. Therefore, this user email must be a valid Google admin user in your organization.
+
+This is not the same email as the Service Account.
+
+If Google fails to query Groups, you may see the following error:
+
+```console
+Notifying Lambda and mark this execution as Failure: googleapi: Error 404: Domain not found., notFound
+```
+
+#### Common Group Name Query Error
+
+If filtering group names using query strings, make sure the provided string is valid. For example,
+`google_group_match: "name:aws*"` is incorrect. Instead use `google_group_match: "Name:aws*"`
+
+If not, you may again see the same error message:
+
+```console
+Notifying Lambda and mark this execution as Failure: googleapi: Error 404: Domain not found., notFound
+```
+
+Ref:
+
+> The specific error you are seeing is because the google api doesn't like the query string you provided for the -g
+> parameter. try -g "Name:Fuel\*"
+
+https://github.com/awslabs/ssosync/issues/91
+
+
+<!-- markdownlint-disable -->
 ## Requirements
 
 | Name | Version |
@@ -210,4 +281,31 @@ Apache 2.0. See [LICENSE](LICENSE).
 | <a name="output_invoke_arn"></a> [invoke\_arn](#output\_invoke\_arn) | Invoke ARN of the lambda function |
 | <a name="output_qualified_arn"></a> [qualified\_arn](#output\_qualified\_arn) | ARN identifying your Lambda Function Version (if versioning is enabled via publish = true) |
 | <a name="output_ssosync_artifact_url"></a> [ssosync\_artifact\_url](#output\_ssosync\_artifact\_url) | URL of the ssosync artifact |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- markdownlint-restore -->
+
+
+
+## References
+
+
+- [AWS ssosync (awslabs)](https://github.com/awslabs/ssosync) - Lambda to sync Google Groups with AWS SSO
+
+- [AWS docs – Configure SAML and SCIM with Google Workspace](https://docs.aws.amazon.com/singlesignon/latest/userguide/gs-gwp.html) - %!s(<nil>)
+
+- [Google Cloud console](https://console.cloud.google.com) - %!s(<nil>)
+
+- [Google Admin console](https://admin.google.com/) - %!s(<nil>)
+
+- [Create Service Accounts (Google Cloud)](https://cloud.google.com/iam/docs/service-accounts-create) - %!s(<nil>)
+
+- [ssosync PR](https://github.com/awslabs/ssosync/pull/133) - %!s(<nil>)
+
+- [ssosync Issue](https://github.com/awslabs/ssosync/issues/93) - %!s(<nil>)
+
+- [ssosync Issue](https://github.com/awslabs/ssosync/issues/91) - %!s(<nil>)
+
+
+
+
+[<img src="https://cloudposse.com/logo-300x69.svg" height="32" align="right"/>](https://cpco.io/homepage?utm_source=github&utm_medium=readme&utm_campaign=cloudposse-terraform-components/aws-ssosync&utm_content=)
+

@@ -11,7 +11,7 @@ description: |-
 
   This component requires manual deployment by a privileged user because it deploys a role in the root or identity
   management account.
-
+usage: |-
   ## Usage
 
   You should be able to deploy the `ssosync` component to the same account as `aws-sso`. Typically that is the `core-gbl-root` or `gbl-root` stack.
@@ -181,17 +181,35 @@ description: |-
   > parameter. try -g "Name:Fuel\*"
 
   https://github.com/awslabs/ssosync/issues/91
-
-  <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-  <!-- prettier-ignore-start -->
-  <!-- prettier-ignore-end -->
-  <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
+references:
+  - name: AWS ssosync (awslabs)
+    description: Lambda to sync Google Groups with AWS SSO
+    url: https://github.com/awslabs/ssosync
+  - name: AWS docs – Configure SAML and SCIM with Google Workspace
+    description:
+    url: https://docs.aws.amazon.com/singlesignon/latest/userguide/gs-gwp.html
+  - name: Google Cloud console
+    description:
+    url: https://console.cloud.google.com
+  - name: Google Admin console
+    description:
+    url: https://admin.google.com/
+  - name: Create Service Accounts (Google Cloud)
+    description:
+    url: https://cloud.google.com/iam/docs/service-accounts-create
+  - name: ssosync PR #133
+    description:
+    url: https://github.com/awslabs/ssosync/pull/133
+  - name: ssosync Issue #93
+    description:
+    url: https://github.com/awslabs/ssosync/issues/93
+  - name: ssosync Issue #91
+    description:
+    url: https://github.com/awslabs/ssosync/issues/91
 tags:
   - component/aws-ssosync
   - layer/identity
   - provider/aws
-
 # Categories of this project
 categories:
   - component/aws-ssosync
