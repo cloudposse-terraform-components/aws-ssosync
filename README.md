@@ -57,8 +57,6 @@ management account.
 
 ## Usage
 
-## Usage
-
 You should be able to deploy the `ssosync` component to the same account as `aws-sso`. Typically that is the `core-gbl-root` or `gbl-root` stack.
 
 **Stack Level**: Global **Deployment**: Must be deployed by `managers` team-member or SuperAdmin using `atmos` CLI (since this is a root account deployment). This could also be deployed in an identity management account.
@@ -352,14 +350,6 @@ Check out these related projects.
 
 For additional context, refer to some of these links.
 
-- [AWS ssosync (awslabs)](https://github.com/awslabs/ssosync) - Lambda to sync Google Groups with AWS SSO
-- [AWS docs – Configure SAML and SCIM with Google Workspace](https://docs.aws.amazon.com/singlesignon/latest/userguide/gs-gwp.html) - %!s(<nil>)
-- [Google Cloud console](https://console.cloud.google.com) - %!s(<nil>)
-- [Google Admin console](https://admin.google.com/) - %!s(<nil>)
-- [Create Service Accounts (Google Cloud)](https://cloud.google.com/iam/docs/service-accounts-create) - %!s(<nil>)
-- [ssosync PR](https://github.com/awslabs/ssosync/pull/133) - %!s(<nil>)
-- [ssosync Issue](https://github.com/awslabs/ssosync/issues/93) - %!s(<nil>)
-- [ssosync Issue](https://github.com/awslabs/ssosync/issues/91) - %!s(<nil>)
 
 
 
