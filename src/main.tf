@@ -16,7 +16,7 @@ locals {
   download_artifact    = "ssosync.tar.gz"
 
   lambda_files     = fileset("${path.module}/dist", "*")
-  tar_file         = fileset("${path.module}", "${local.download_artifact}")
+  tar_file         = fileset(path.module, local.download_artifact)
   tar_file_content = [for f in local.tar_file : filebase64sha256("${path.module}/${f}")]
 
   file_content_map = local.enabled ? [
