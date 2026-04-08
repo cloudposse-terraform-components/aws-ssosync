@@ -34,13 +34,13 @@ variable "log_format" {
 variable "ssosync_url_prefix" {
   type        = string
   description = "URL prefix for ssosync binary"
-  default     = "https://github.com/cloudposse/ssosync/releases/download"
+  default     = "https://github.com/awslabs/ssosync/releases/download"
 }
 
 variable "ssosync_version" {
   type        = string
   description = "Version of ssosync to use"
-  default     = "v3.0.0"
+  default     = "v2.3.7"
 }
 
 variable "architecture" {

@@ -33,9 +33,11 @@ components:
         enabled: true
         name: ssosync
         google_admin_email: admin@acme.com
-        log_format: text
+        log_format: json
         log_level: warn
         schedule_expression: "rate(15 minutes)"
+        ssosync_url_prefix: "https://github.com/awslabs/ssosync/releases/download"
+        ssosync_version: "v2.3.7"
         # Filter the groups that will be synced and is optional (default: all groups)
         # This supports wild cards `*`
         google_group_match:
@@ -43,6 +45,15 @@ components:
           - "email='aws@acme.com'"
           - "name='Acme Team'"
 ```
+
+### Secret Storage
+
+This component uses both SSM Parameter Store and Secrets Manager for different purposes:
+
+- **SSM Parameter Store** — source of truth for sensitive values, managed by ops. Terraform reads from SSM at apply time.
+- **Secrets Manager** — runtime secret store for the Lambda. Terraform creates/updates Secrets Manager secrets from the SSM values. At invocation time, ssosync v2.0+ reads config directly from Secrets Manager via its `configLambda()` code path, using unprefixed env vars (e.g. `GOOGLE_CREDENTIALS`, `SCIM_ENDPOINT`) as secret names.
+
+This approach avoids embedding the Google credentials JSON directly in Lambda environment variables, which would hit the 4 KB env var size limit for large service account keys.
 
 We recommend following a similar process to what the [AWS ssosync](https://github.com/awslabs/ssosync) documentation
 recommends.
@@ -142,17 +153,6 @@ Use the names of the Groups now provisioned programmatically in the `aws-sso` co
 [aws-sso](../aws-sso/) component documentation to deploy the `aws-sso` component.
 
 ### FAQ
-
-#### Why is the tool forked by `Benbentwo`?
-
-The `awslabs` tool requires AWS Secrets Managers for the Google Credentials. However, we would prefer to use AWS SSM to
-store all credentials consistency and not require AWS Secrets Manager. Therefore we've created a Pull Request and will
-point to a fork until the PR is merged.
-
-Ref:
-
-- https://github.com/awslabs/ssosync/pull/133
-- https://github.com/awslabs/ssosync/issues/93
 
 #### What should I use for the Google Admin Email Address?
 
