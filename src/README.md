@@ -46,6 +46,15 @@ components:
           - "name='Acme Team'"
 ```
 
+### Secret Storage
+
+This component uses both SSM Parameter Store and Secrets Manager for different purposes:
+
+- **SSM Parameter Store** — source of truth for sensitive values, managed by ops. Terraform reads from SSM at apply time.
+- **Secrets Manager** — runtime secret store for the Lambda. Terraform creates/updates Secrets Manager secrets from the SSM values. At invocation time, ssosync v2.0+ reads config directly from Secrets Manager via its `configLambda()` code path, using unprefixed env vars (e.g. `GOOGLE_CREDENTIALS`, `SCIM_ENDPOINT`) as secret names.
+
+This approach avoids embedding the Google credentials JSON directly in Lambda environment variables, which would hit the 4 KB env var size limit for large service account keys.
+
 We recommend following a similar process to what the [AWS ssosync](https://github.com/awslabs/ssosync) documentation
 recommends.
 

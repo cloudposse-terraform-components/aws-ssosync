@@ -1,11 +1,25 @@
 locals {
   # Version of ssosync to use
   version                    = var.ssosync_version
-  enabled                    = module.this.enabled
+  enabled = module.this.enabled
+
+  # SSM Parameter Store is the source of truth for sensitive values.
+  # Terraform reads these at apply time to populate Secrets Manager.
+  # At Lambda runtime, ssosync v2.0+ reads config from Secrets Manager
+  # using unprefixed env vars as secret names (configLambda() code path).
   google_credentials         = one(data.aws_ssm_parameter.google_credentials[*].value)
   scim_endpoint_url          = one(data.aws_ssm_parameter.scim_endpoint_url[*].value)
   scim_endpoint_access_token = one(data.aws_ssm_parameter.scim_endpoint_access_token[*].value)
   identity_store_id          = one(data.aws_ssm_parameter.identity_store_id[*].value)
+
+  secrets = local.enabled ? {
+    "${var.google_credentials_ssm_path}/google_credentials" = local.google_credentials
+    "${var.google_credentials_ssm_path}/google_admin"       = var.google_admin_email
+    "${var.google_credentials_ssm_path}/scim_endpoint"      = local.scim_endpoint_url
+    "${var.google_credentials_ssm_path}/scim_access_token"  = local.scim_endpoint_access_token
+    "${var.google_credentials_ssm_path}/identity_store_id"  = local.identity_store_id
+    "${var.google_credentials_ssm_path}/region"             = var.region
+  } : {}
 
   # ssosync v2.0+ dropped the Lambda_ prefix from release asset filenames.
   ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/ssosync_Linux_${var.architecture}.tar.gz"
@@ -121,21 +135,24 @@ resource "aws_lambda_function" "ssosync" {
 
   environment {
     variables = {
-      SSOSYNC_LOG_LEVEL               = var.log_level
-      SSOSYNC_LOG_FORMAT              = var.log_format
-      SSOSYNC_GOOGLE_CREDENTIALS_JSON = local.google_credentials
-      SSOSYNC_GOOGLE_ADMIN            = var.google_admin_email
-      SSOSYNC_SCIM_ENDPOINT           = local.scim_endpoint_url
-      SSOSYNC_SCIM_ACCESS_TOKEN       = local.scim_endpoint_access_token
-      SSOSYNC_REGION                  = var.region
-      SSOSYNC_IDENTITY_STORE_ID       = local.identity_store_id
-      SSOSYNC_USER_MATCH              = join(",", var.google_user_match)
-      SSOSYNC_GROUP_MATCH             = join(",", var.google_group_match)
-      SSOSYNC_SYNC_METHOD             = var.sync_method
-      SSOSYNC_IGNORE_GROUPS           = var.ignore_groups
-      SSOSYNC_IGNORE_USERS            = var.ignore_users
-      SSOSYNC_INCLUDE_GROUPS          = var.include_groups
-      SSOSYNC_LOAD_ASM_SECRETS        = false
+      # ssosync v2.0+ Lambda mode (configLambda): unprefixed env vars are
+      # Secrets Manager secret names, resolved at invocation time.
+      GOOGLE_CREDENTIALS = "${var.google_credentials_ssm_path}/google_credentials"
+      GOOGLE_ADMIN       = "${var.google_credentials_ssm_path}/google_admin"
+      SCIM_ENDPOINT      = "${var.google_credentials_ssm_path}/scim_endpoint"
+      SCIM_ACCESS_TOKEN  = "${var.google_credentials_ssm_path}/scim_access_token"
+      IDENTITY_STORE_ID  = "${var.google_credentials_ssm_path}/identity_store_id"
+      REGION             = "${var.google_credentials_ssm_path}/region"
+
+      # Non-sensitive config read via Viper (SSOSYNC_ prefix).
+      SSOSYNC_LOG_LEVEL      = var.log_level
+      SSOSYNC_LOG_FORMAT     = var.log_format
+      SSOSYNC_SYNC_METHOD    = var.sync_method
+      SSOSYNC_USER_MATCH     = join(",", var.google_user_match)
+      SSOSYNC_GROUP_MATCH    = join(",", var.google_group_match)
+      SSOSYNC_IGNORE_GROUPS  = var.ignore_groups
+      SSOSYNC_IGNORE_USERS   = var.ignore_users
+      SSOSYNC_INCLUDE_GROUPS = var.include_groups
     }
   }
 
@@ -143,6 +160,22 @@ resource "aws_lambda_function" "ssosync" {
     replace_triggered_by = [archive_file.lambda]
   }
   depends_on = [null_resource.extract_my_tgz, archive_file.lambda]
+}
+
+# Secrets Manager secrets — values sourced from SSM at apply time.
+# ssosync's Lambda handler resolves these by name at invocation time.
+resource "aws_secretsmanager_secret" "ssosync" {
+  for_each = local.secrets
+
+  name                    = each.key
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "ssosync" {
+  for_each = local.secrets
+
+  secret_id     = aws_secretsmanager_secret.ssosync[each.key].id
+  secret_string = each.value
 }
 
 resource "aws_cloudwatch_event_rule" "ssosync" {
