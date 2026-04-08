@@ -1,18 +1,14 @@
 locals {
   # Version of ssosync to use
-  # We forked it because we use SSM Parameters to load the env vars
-  # The issue has been tracked several places but never merged.
-  # https://github.com/awslabs/ssosync/issues/93
-  # https://github.com/awslabs/ssosync/issues/180
-  version = var.ssosync_version
-  # -----------------------------------------------------------
+  version                    = var.ssosync_version
   enabled                    = module.this.enabled
   google_credentials         = one(data.aws_ssm_parameter.google_credentials[*].value)
   scim_endpoint_url          = one(data.aws_ssm_parameter.scim_endpoint_url[*].value)
   scim_endpoint_access_token = one(data.aws_ssm_parameter.scim_endpoint_access_token[*].value)
   identity_store_id          = one(data.aws_ssm_parameter.identity_store_id[*].value)
 
-  ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/Lambda_ssosync_Linux_${var.architecture}.tar.gz"
+  # ssosync v2.0+ dropped the Lambda_ prefix from release asset filenames.
+  ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/ssosync_Linux_${var.architecture}.tar.gz"
   download_artifact    = "ssosync.tar.gz"
 
   lambda_files     = fileset("${path.module}/dist", "*")
@@ -79,7 +75,8 @@ resource "null_resource" "extract_my_tgz" {
   count = local.enabled ? 1 : 0
 
   provisioner "local-exec" {
-    command = "tar -xzf ${local.download_artifact} -C dist"
+    # ssosync v2.0+ names the binary "ssosync"; provided.al2023 requires "bootstrap".
+    command = "tar -xzf ${local.download_artifact} -C dist && mv dist/ssosync dist/bootstrap"
   }
   // We want to re-extract the tar.gz when the tar.gz changes or the dist folder changes
   triggers = {
