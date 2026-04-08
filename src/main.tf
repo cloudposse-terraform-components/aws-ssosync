@@ -1,6 +1,6 @@
 locals {
   # Version of ssosync to use
-  version                    = var.ssosync_version
+  version = var.ssosync_version
   enabled = module.this.enabled
 
   # SSM Parameter Store is the source of truth for sensitive values.
