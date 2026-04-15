@@ -144,15 +144,17 @@ resource "aws_lambda_function" "ssosync" {
       IDENTITY_STORE_ID  = "${var.google_credentials_ssm_path}/identity_store_id"
       REGION             = "${var.google_credentials_ssm_path}/region"
 
-      # Non-sensitive config read via Viper (SSOSYNC_ prefix).
-      SSOSYNC_LOG_LEVEL      = var.log_level
-      SSOSYNC_LOG_FORMAT     = var.log_format
-      SSOSYNC_SYNC_METHOD    = var.sync_method
-      SSOSYNC_USER_MATCH     = join(",", var.google_user_match)
-      SSOSYNC_GROUP_MATCH    = join(",", var.google_group_match)
-      SSOSYNC_IGNORE_GROUPS  = var.ignore_groups
-      SSOSYNC_IGNORE_USERS   = var.ignore_users
-      SSOSYNC_INCLUDE_GROUPS = var.include_groups
+      # Non-sensitive config: configLambda() reads these via os.LookupEnv with bare names
+      # (no SSOSYNC_ prefix), bypassing Viper. Using the SSOSYNC_ prefix causes these
+      # values to be silently ignored, e.g. GROUP_MATCH defaults to "*" (all groups).
+      LOG_LEVEL      = var.log_level
+      LOG_FORMAT     = var.log_format
+      SYNC_METHOD    = var.sync_method
+      USER_MATCH     = join(",", var.google_user_match)
+      GROUP_MATCH    = join(",", var.google_group_match)
+      IGNORE_GROUPS  = var.ignore_groups
+      IGNORE_USERS   = var.ignore_users
+      INCLUDE_GROUPS = var.include_groups
     }
   }
 
