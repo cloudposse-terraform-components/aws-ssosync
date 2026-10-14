@@ -24,6 +24,8 @@ data "aws_iam_policy_document" "ssosync_lambda_identity_center" {
       "identitystore:GetGroupMembershipId",
       "identitystore:DeleteGroupMembership",
       "identitystore:DeleteGroup",
+      # Discovered at startup by getIdentityStoreId(), which log.Fatal()s when denied.
+      "sso:ListInstances",
       "secretsmanager:DescribeSecret",
       "secretsmanager:GetSecretValue",
       "kms:Decrypt",
