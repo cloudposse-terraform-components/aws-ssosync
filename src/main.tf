@@ -155,6 +155,12 @@ resource "aws_lambda_function" "ssosync" {
       IGNORE_GROUPS  = var.ignore_groups
       IGNORE_USERS   = var.ignore_users
       INCLUDE_GROUPS = var.include_groups
+
+      # Read by configLambda() via os.LookupEnv with bare names, same as the
+      # non-sensitive config above. getEnvBool treats any value other than the
+      # string "true" as false.
+      DRY_RUN          = tostring(var.dry_run)
+      RETAIN_UNMATCHED = tostring(var.retain_unmatched)
     }
   }
 

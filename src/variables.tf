@@ -100,3 +100,15 @@ variable "sync_method" {
     error_message = "Allowed values: `groups`, `users_groups`"
   }
 }
+
+variable "dry_run" {
+  type        = bool
+  description = "Log the changes ssosync would make to the Identity Store without applying any of them. Recommended for the first run after any period where the sync has been failing."
+  default     = false
+}
+
+variable "retain_unmatched" {
+  type        = bool
+  description = "Keep users and groups that exist in the Identity Store but cannot be matched in the Google directory, instead of deleting them."
+  default     = false
+}
