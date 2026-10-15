@@ -137,10 +137,10 @@ resource "aws_lambda_function" "ssosync" {
     variables = {
       # ssosync v2.0+ Lambda mode (configLambda): unprefixed env vars are
       # Secrets Manager secret names, resolved at invocation time.
-      GOOGLE_CREDENTIALS = "${var.google_credentials_ssm_path}/google_credentials"
-      GOOGLE_ADMIN       = "${var.google_credentials_ssm_path}/google_admin"
-      SCIM_ENDPOINT      = "${var.google_credentials_ssm_path}/scim_endpoint"
-      SCIM_ACCESS_TOKEN  = "${var.google_credentials_ssm_path}/scim_access_token"
+      GOOGLE_CREDENTIALS = aws_secretsmanager_secret.ssosync["${var.google_credentials_ssm_path}/google_credentials"].arn
+      GOOGLE_ADMIN       = aws_secretsmanager_secret.ssosync["${var.google_credentials_ssm_path}/google_admin"].arn
+      SCIM_ENDPOINT      = aws_secretsmanager_secret.ssosync["${var.google_credentials_ssm_path}/scim_endpoint"].arn
+      SCIM_ACCESS_TOKEN  = aws_secretsmanager_secret.ssosync["${var.google_credentials_ssm_path}/scim_access_token"].arn
       IDENTITY_STORE_ID  = "${var.google_credentials_ssm_path}/identity_store_id"
       REGION             = "${var.google_credentials_ssm_path}/region"
 
