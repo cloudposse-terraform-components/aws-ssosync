@@ -25,13 +25,16 @@ locals {
   ssosync_artifact_url = "${var.ssosync_url_prefix}/${local.version}/ssosync_Linux_${var.architecture}.tar.gz"
   download_artifact    = "ssosync.tar.gz"
 
-  lambda_files     = fileset("${path.module}/dist", "*")
-  tar_file         = fileset(path.module, local.download_artifact)
-  tar_file_content = [for f in local.tar_file : filebase64sha256("${path.module}/${f}")]
-
-  file_content_map = local.enabled ? [
-    for f in local.lambda_files : filebase64sha256("${path.module}/dist/${f}")
-  ] : []
+  // Hash of the release artifact that actually gets deployed. `module.ssosync_artifact`
+  // downloads through `data.external.curl`, so this is recomputed on every plan and is the same
+  // value `aws_lambda_function.source_code_hash` already uses. It moves when `ssosync_version`
+  // moves and is stable otherwise.
+  //
+  // This deliberately does not hash `dist`. Doing so never settles, for two reasons: the apply
+  // rewrites that directory through `null_resource.extract_my_tgz`, so the keeper is computed at
+  // plan time from state the same apply mutates, and `dist` carries the release README, CHANGELOG
+  // and LICENSE beside the binary, so a documentation change rebuilt the Lambda.
+  artifact_sha256 = local.enabled ? module.ssosync_artifact[0].base64sha256 : ""
 }
 
 data "aws_ssm_parameter" "google_credentials" {
@@ -72,14 +75,14 @@ module "ssosync_artifact" {
 
 }
 
-// This resource is in charge of "notifying" when the dist folder has changed
+// This resource is in charge of "notifying" when the deployed artifact has changed
 // by updating the `keepers` value.
 resource "random_pet" "zip_recreator" {
   count = local.enabled ? 1 : 0
 
   prefix = coalesce(module.this.name, "dist")
   keepers = {
-    file_content = join(",", local.file_content_map)
+    artifact_sha256 = local.artifact_sha256
   }
 }
 
@@ -92,10 +95,9 @@ resource "null_resource" "extract_my_tgz" {
     # ssosync v2.0+ names the binary "ssosync"; provided.al2023 requires "bootstrap".
     command = "tar -xzf ${local.download_artifact} -C dist && mv dist/ssosync dist/bootstrap"
   }
-  // We want to re-extract the tar.gz when the tar.gz changes or the dist folder changes
+  // We want to re-extract whenever the downloaded artifact changes.
   triggers = {
-    file_content = join(",", local.file_content_map)
-    tar_sha256   = join(",", local.tar_file_content)
+    artifact_sha256 = local.artifact_sha256
   }
 
   depends_on = [module.ssosync_artifact[0]]
